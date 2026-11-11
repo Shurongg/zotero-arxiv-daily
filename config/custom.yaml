@@ -20,7 +20,8 @@ llm:
 
 source:
   arxiv:
-    category: ["cs.AI","cs.CV","cs.LG","cs.CL"]
+    category: ["cs.CL", "cs.AI", "cs.IR", "cs.LG", "cs.MA"]
+    include_cross_list: true
 
 executor:
   debug: ${oc.env:DEBUG,null}

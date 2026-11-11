@@ -2,6 +2,7 @@
 
 import numpy as np
 import pytest
+from omegaconf import OmegaConf
 
 from zotero_arxiv_daily.reranker.base import BaseReranker, get_reranker_cls
 from tests.canned_responses import make_sample_paper, make_sample_corpus
@@ -63,6 +64,31 @@ def test_rerank_single_candidate_single_corpus():
     ranked = reranker.rerank(papers, corpus)
     assert len(ranked) == 1
     assert ranked[0].score is not None
+
+
+def test_research_focus_outweighs_unrelated_zotero_similarity():
+    corpus = make_sample_corpus(3)
+    papers = [make_sample_paper(title="Zotero-like"), make_sample_paper(title="Research match")]
+    sim = np.array([
+        [0.9, 0.9, 0.9, 0.1, 0.1],
+        [0.2, 0.2, 0.2, 0.8, 0.7],
+    ])
+    reranker = StubReranker(sim)
+    reranker.config = OmegaConf.create({"reranker": {"focus": {"weight": 0.8, "topics": ["RAG evaluation", "LLM agents"]}}})
+
+    ranked = reranker.rerank(papers, corpus)
+
+    assert [paper.title for paper in ranked] == ["Research match", "Zotero-like"]
+    assert ranked[0].score == pytest.approx(6.8)
+    assert ranked[1].score == pytest.approx(2.6)
+
+
+def test_research_focus_rejects_invalid_weight():
+    reranker = StubReranker(np.array([[0.5, 0.5]]))
+    reranker.config = OmegaConf.create({"reranker": {"focus": {"weight": 1.2, "topics": ["RAG evaluation"]}}})
+
+    with pytest.raises(ValueError, match="between 0 and 1"):
+        reranker.rerank([make_sample_paper()], make_sample_corpus(1))
 
 
 def test_get_reranker_cls_unknown():

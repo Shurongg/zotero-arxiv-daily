@@ -6,7 +6,9 @@ We test the inner logic by calling main's body with a composed config.
 """
 
 import pytest
+from hydra import compose, initialize_config_dir
 from hydra.core.global_hydra import GlobalHydra
+from pathlib import Path
 
 
 @pytest.fixture(autouse=True)
@@ -59,3 +61,15 @@ def test_main_debug_logging(config, monkeypatch):
 
     main_mod.main.__wrapped__(config)
     # If we get here without error, the debug path executed successfully
+
+
+def test_default_config_uses_research_focus():
+    config_dir = str(Path(__file__).resolve().parent.parent / "config")
+    with initialize_config_dir(config_dir=config_dir, version_base=None):
+        config = compose(config_name="default")
+
+    assert list(config.source.arxiv.category) == ["cs.CL", "cs.AI", "cs.IR", "cs.LG", "cs.MA"]
+    assert config.source.arxiv.include_cross_list is True
+    assert config.executor.max_paper_num == 5
+    assert config.reranker.focus.weight == 0.8
+    assert len(config.reranker.focus.topics) == 3
