@@ -9,8 +9,10 @@ from datetime import datetime
 from .reranker import get_reranker_cls
 from .construct_email import render_email
 from .utils import send_email
+from .dashboard_export import write_dashboard_payload
 from openai import OpenAI
 from tqdm import tqdm
+import os
 
 
 def normalize_path_patterns(patterns: list[str] | ListConfig | None, config_key: str) -> list[str] | None:
@@ -115,9 +117,15 @@ class Executor:
             for p in tqdm(reranked_papers):
                 p.generate_tldr(self.openai_client, self.config.llm)
                 p.generate_affiliations(self.openai_client, self.config.llm)
+                if os.getenv("DASHBOARD_OUTPUT"):
+                    p.generate_reading_card(self.openai_client, self.config.llm)
         elif not self.config.executor.send_empty:
             logger.info("No new papers found. No email will be sent.")
+            if output := os.getenv("DASHBOARD_OUTPUT"):
+                write_dashboard_payload([], output)
             return
+        if output := os.getenv("DASHBOARD_OUTPUT"):
+            write_dashboard_payload(reranked_papers, output)
         logger.info("Sending email...")
         email_content = render_email(reranked_papers)
         send_email(self.config, email_content)

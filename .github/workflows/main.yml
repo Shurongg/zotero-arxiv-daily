@@ -24,8 +24,17 @@ jobs:
           OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
           OPENAI_API_BASE: ${{ secrets.OPENAI_API_BASE }}
           CUSTOM_CONFIG: ${{ vars.CUSTOM_CONFIG }}
+          DASHBOARD_OUTPUT: .dashboard-output/papers-today.json
         run: |
           printf "%b\n" "$CUSTOM_CONFIG" > config/custom.yaml
           echo "Use custom config: "
           cat config/custom.yaml
           uv run src/zotero_arxiv_daily/main.py
+
+      - name: Upload dashboard papers
+        uses: actions/upload-artifact@v4
+        with:
+          name: dashboard-papers
+          path: .dashboard-output/papers-today.json
+          if-no-files-found: error
+          retention-days: 14

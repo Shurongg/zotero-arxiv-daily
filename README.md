@@ -109,6 +109,13 @@ topics, an 80% topic / 20% Zotero relevance score, and a maximum of five papers
 per email. Edit it to change the daily recommendation profile. Settings such as
 email delivery and the LLM API still come from `CUSTOM_CONFIG`. The workflow
 checks out this fork, so its scheduled runs use the profile in this repository.
+
+When the scheduled email job runs, it also prepares a `dashboard-papers` artifact
+for the Obsidian dashboard. The artifact contains only the selected papers' titles,
+links, relevance scores, TLDRs, and short AI reading cards. It does not include
+your Zotero library, abstracts, or extracted paper text. The dashboard downloads
+the latest artifact with the GitHub CLI after `gh auth login`.
+
 >[!NOTE]
 > `${oc.env:XXX,yyy}` means the value of the environment variable `XXX`. If the variable is not set, the default value `yyy` will be used.
 
