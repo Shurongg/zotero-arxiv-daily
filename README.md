@@ -119,8 +119,9 @@ the latest artifact with the GitHub CLI after `gh auth login`.
 The separate [dashboard news workflow](.github/workflows/dashboard-news.yml) uses
 the same `OPENAI_API_KEY` and `OPENAI_API_BASE` secrets to ask DeepSeek for a
 short daily digest. It runs in GitHub Actions, uploads a `dashboard-news`
-artifact, and does not send another email. The Obsidian dashboard only downloads
-that artifact. Edit [`dashboard_news/persona.md`](dashboard_news/persona.md) to
+artifact, and publishes the same public digest as a JSON file on the
+`dashboard-data` branch for the Obsidian dashboard. It does not send another
+email. Edit [`dashboard_news/persona.md`](dashboard_news/persona.md) to
 change which AI topics get priority.
 
 >[!NOTE]

@@ -6,7 +6,11 @@ on:
     - cron: '0 6 * * *'
 
 permissions:
-  contents: read
+  contents: write
+
+concurrency:
+  group: dashboard-news
+  cancel-in-progress: false
 
 jobs:
   prepare-news:
@@ -36,3 +40,8 @@ jobs:
           path: .dashboard-news-output/today.json
           if-no-files-found: error
           retention-days: 14
+
+      - name: Publish a direct JSON feed for Obsidian
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+        run: node dashboard_news/publish.mjs
