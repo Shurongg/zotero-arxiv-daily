@@ -116,6 +116,13 @@ links, relevance scores, TLDRs, and short AI reading cards. It does not include
 your Zotero library, abstracts, or extracted paper text. The dashboard downloads
 the latest artifact with the GitHub CLI after `gh auth login`.
 
+The separate [dashboard news workflow](.github/workflows/dashboard-news.yml) uses
+the same `OPENAI_API_KEY` and `OPENAI_API_BASE` secrets to ask DeepSeek for a
+short daily digest. It runs in GitHub Actions, uploads a `dashboard-news`
+artifact, and does not send another email. The Obsidian dashboard only downloads
+that artifact. Edit [`dashboard_news/persona.md`](dashboard_news/persona.md) to
+change which AI topics get priority.
+
 >[!NOTE]
 > `${oc.env:XXX,yyy}` means the value of the environment variable `XXX`. If the variable is not set, the default value `yyy` will be used.
 
