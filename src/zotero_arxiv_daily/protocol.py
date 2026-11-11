@@ -48,6 +48,7 @@ class Paper:
     tldr: Optional[str] = None
     affiliations: Optional[list[str]] = None
     score: Optional[float] = None
+    reading_card: Optional[dict[str, str]] = None
 
     def _generate_tldr_with_llm(self, openai_client:OpenAI,llm_params:dict) -> str:
         lang = llm_params.get('language', 'English')
@@ -94,6 +95,59 @@ class Paper:
             tldr = self.abstract
             self.tldr = tldr
             return tldr
+
+    def generate_reading_card(self, openai_client: OpenAI, llm_params: dict) -> dict[str, str]:
+        """Create a short, evidence-bound card for the Obsidian dashboard."""
+        basis = "提取正文" if self.full_text else "仅摘要"
+        empty = {
+            "basis": basis,
+            "problem": "暂无可靠信息",
+            "method": "暂无可靠信息",
+            "results": "暂无可靠信息",
+            "relevance": "暂无可靠信息",
+            "limitations": "暂无可靠信息",
+        }
+        if not self.full_text and not self.abstract:
+            self.reading_card = empty
+            return empty
+
+        text = f"标题：{self.title}\n\n摘要：{self.abstract or '无'}\n\n"
+        if self.full_text:
+            text += f"提取到的正文：\n{self.full_text}"
+        enc = tiktoken.encoding_for_model("gpt-4o")
+        tokens = enc.encode(text)
+        if self.full_text and len(tokens) > 12000:
+            basis = "正文节选"
+            empty["basis"] = basis
+        text = enc.decode(tokens[:12000])
+        prompt = (
+            "请根据下面的论文内容，用中文写一张五分钟能读完的阅读卡。"
+            "只使用给出的内容，不能补造实验结果、数字或结论。"
+            "如果只给摘要，results 只能报告摘要明确给出的结果，limitations 要指出缺少全文。"
+            "如果给出的是提取正文的截断片段，不能假称读过完整论文。"
+            "返回且只返回 JSON 对象，字段恰好是 problem、method、results、relevance、limitations。"
+            "每项 1–3 句。relevance 只讨论它与 RAG evaluation、retrieval noise/robustness 或 LLM agents 的具体联系；"
+            "联系弱就直说。limitations 写论文自身限制以及当前材料无法核实的地方。\n\n"
+            + text
+        )
+        try:
+            raw = _request_llm(openai_client, llm_params, [
+                {"role": "system", "content": "你是谨慎的 NLP 论文阅读助手。只输出有效 JSON。"},
+                {"role": "user", "content": prompt},
+            ])
+            raw = raw.strip()
+            if raw.startswith("```"):
+                raw = re.sub(r"^```(?:json)?\s*|\s*```$", "", raw, flags=re.IGNORECASE)
+            parsed = json.loads(raw)
+            card = {key: str(parsed.get(key, empty[key])).strip() or empty[key]
+                    for key in ("problem", "method", "results", "relevance", "limitations")}
+            card["basis"] = basis
+            self.reading_card = card
+            return card
+        except Exception as exc:
+            logger.warning(f"Failed to generate reading card of {self.url}: {exc}")
+            self.reading_card = empty
+            return empty
 
     def _generate_affiliations_with_llm(self, openai_client:OpenAI,llm_params:dict) -> Optional[list[str]]:
         if self.full_text is not None:
