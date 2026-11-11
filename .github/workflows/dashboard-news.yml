@@ -1,0 +1,38 @@
+name: Prepare dashboard news
+
+on:
+  workflow_dispatch:
+  schedule:
+    - cron: '0 6 * * *'
+
+permissions:
+  contents: read
+
+jobs:
+  prepare-news:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+
+      - name: Fetch and summarize AI news with DeepSeek
+        env:
+          DEEPSEEK_API_KEY: ${{ secrets.OPENAI_API_KEY }}
+          DEEPSEEK_API_BASE: ${{ secrets.OPENAI_API_BASE }}
+          DEEPSEEK_MODEL: deepseek-flash
+          SB_NEWS_DIR: .dashboard-news-output
+        run: node dashboard_news/fetch.mjs
+
+      - name: Upload dashboard news
+        uses: actions/upload-artifact@v4
+        with:
+          name: dashboard-news
+          path: .dashboard-news-output/today.json
+          if-no-files-found: error
+          retention-days: 14
