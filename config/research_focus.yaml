@@ -1,0 +1,26 @@
+# Loaded after custom.yaml so the daily email uses this research profile even
+# when GitHub Actions writes custom.yaml from its CUSTOM_CONFIG variable.
+source:
+  arxiv:
+    category: ["cs.CL", "cs.AI", "cs.IR", "cs.LG", "cs.MA"]
+    include_cross_list: true
+
+executor:
+  max_paper_num: 5
+
+reranker:
+  focus:
+    weight: 0.8 # Research-topic match; the remaining 0.2 is Zotero similarity.
+    topics:
+      - >-
+        Retrieval-augmented generation (RAG) evaluation: retrieval quality,
+        answer correctness, faithfulness, grounding, evidence attribution,
+        RAG benchmarks, human evaluation, and LLM-as-a-judge reliability.
+      - >-
+        Retrieval noise and robustness in RAG and long-context language models:
+        irrelevant, conflicting, misleading, or adversarial retrieved passages;
+        distractors, ranking and ordering effects, and robustness stress tests.
+      - >-
+        Large language model agents: tool use, planning, memory, multi-step
+        workflows, agent trajectories, reliability, failure modes, and
+        evaluation benchmarks.

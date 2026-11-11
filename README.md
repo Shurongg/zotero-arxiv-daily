@@ -96,14 +96,19 @@ llm:
 
 source:
   arxiv:
-    category: ["cs.AI","cs.CV","cs.LG","cs.CL"]
-    include_cross_list: false # Set to true to include arXiv cross-list papers in these categories.
+    category: ["cs.CL", "cs.AI", "cs.IR", "cs.LG", "cs.MA"]
+    include_cross_list: true # Include cross-listed papers in these categories.
 
 executor:
   debug: ${oc.env:DEBUG,null}
   source: ['arxiv']
 ```
-Set `source.arxiv.include_cross_list: true` if you want cross-listed papers included.
+This fork loads [`config/research_focus.yaml`](config/research_focus.yaml) after
+`CUSTOM_CONFIG`. That file sets the active arXiv categories, the three research
+topics, an 80% topic / 20% Zotero relevance score, and a maximum of five papers
+per email. Edit it to change the daily recommendation profile. Settings such as
+email delivery and the LLM API still come from `CUSTOM_CONFIG`. The workflow
+checks out this fork, so its scheduled runs use the profile in this repository.
 >[!NOTE]
 > `${oc.env:XXX,yyy}` means the value of the environment variable `XXX`. If the variable is not set, the default value `yyy` will be used.
 

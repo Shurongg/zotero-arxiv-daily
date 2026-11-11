@@ -1,3 +1,4 @@
 defaults:
   - base
   - custom
+  - research_focus

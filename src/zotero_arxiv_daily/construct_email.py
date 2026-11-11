@@ -28,6 +28,10 @@ framework = """
 <body>
 
 <div>
+    <p style="font-family: Arial, sans-serif; font-size: 13px; color: #666;">
+      Relevance combines research-topic match and Zotero similarity.
+      It is a match score, not a paper quality rating.
+    </p>
     __CONTENT__
 </div>
 
