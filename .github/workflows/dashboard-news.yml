@@ -3,7 +3,9 @@ name: Prepare dashboard news
 on:
   workflow_dispatch:
   schedule:
-    - cron: '0 6 * * *'
+    # Avoid GitHub's busy top of the hour; the second run fills in a missed first run.
+    - cron: '17 6 * * *'
+    - cron: '47 8 * * *'
 
 permissions:
   contents: write
@@ -25,7 +27,15 @@ jobs:
         with:
           node-version: '22'
 
+      - name: Check whether today's news is already published
+        id: freshness
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+          SKIP_IF_FRESH: ${{ github.event_name == 'schedule' }}
+        run: node dashboard_news/freshness.mjs
+
       - name: Fetch and summarize AI news with DeepSeek
+        if: steps.freshness.outputs.needs_update == 'true'
         env:
           DEEPSEEK_API_KEY: ${{ secrets.OPENAI_API_KEY }}
           DEEPSEEK_API_BASE: ${{ secrets.OPENAI_API_BASE }}
@@ -34,6 +44,7 @@ jobs:
         run: node dashboard_news/fetch.mjs
 
       - name: Upload dashboard news
+        if: steps.freshness.outputs.needs_update == 'true'
         uses: actions/upload-artifact@v4
         with:
           name: dashboard-news
@@ -42,6 +53,7 @@ jobs:
           retention-days: 14
 
       - name: Publish a direct JSON feed for Obsidian
+        if: steps.freshness.outputs.needs_update == 'true'
         env:
           GITHUB_TOKEN: ${{ github.token }}
         run: node dashboard_news/publish.mjs
