@@ -252,3 +252,39 @@ def test_retrieve_raw_papers_retries_on_http_failure(config, mock_feedparser, mo
     assert len(calls) == 2
     assert len(raw) > 0
 
+
+def test_retrieve_raw_papers_retries_empty_feed(config, mock_feedparser, monkeypatch):
+    empty_feed = SimpleNamespace(
+        status=200,
+        feed=SimpleNamespace(title="arXiv RSS"),
+        entries=[],
+        bozo=False,
+    )
+    responses = iter([empty_feed, mock_feedparser])
+    delays = []
+    monkeypatch.setattr(arxiv_retriever.feedparser, "parse", lambda _: next(responses))
+    monkeypatch.setattr(arxiv_retriever, "sleep", delays.append)
+
+    raw = ArxivRetriever(config)._retrieve_raw_papers()
+
+    assert raw
+    assert delays == [60]
+
+
+def test_retrieve_raw_papers_stops_after_persistent_empty_feed(config, monkeypatch):
+    empty_feed = SimpleNamespace(
+        status=200,
+        feed=SimpleNamespace(title="arXiv RSS"),
+        entries=[],
+        bozo=False,
+    )
+    calls = []
+    delays = []
+    monkeypatch.setattr(arxiv_retriever.feedparser, "parse", lambda url: calls.append(url) or empty_feed)
+    monkeypatch.setattr(arxiv_retriever, "sleep", delays.append)
+
+    raw = ArxivRetriever(config)._retrieve_raw_papers()
+
+    assert raw == []
+    assert len(calls) == 3
+    assert delays == [60, 60]

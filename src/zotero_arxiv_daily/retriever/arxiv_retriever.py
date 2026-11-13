@@ -219,42 +219,55 @@ class ArxivRetriever(BaseRetriever):
         include_cross_list = self.config.source.arxiv.get("include_cross_list", False)
         rss_url = f"https://rss.arxiv.org/atom/{query}"
 
-        # Get latest papers from arxiv RSS feed with retry
+        # Retry invalid responses and a temporarily empty feed separately.
         retry_num = 5
         delay_time = 5
+        empty_retry_num = 3
+        empty_delay_time = 60
         feed = None
-        for attempt in range(retry_num):
-            feed = feedparser.parse(rss_url)
-            status = getattr(feed, "status", None)
-            bozo = getattr(feed, "bozo", False)
-            bozo_exc = getattr(feed, "bozo_exception", None)
-            feed_meta = getattr(feed, "feed", None)
-            title = getattr(feed_meta, "title", "") if feed_meta else ""
+        for empty_attempt in range(empty_retry_num):
+            for attempt in range(retry_num):
+                feed = feedparser.parse(rss_url)
+                status = getattr(feed, "status", None)
+                bozo = getattr(feed, "bozo", False)
+                bozo_exc = getattr(feed, "bozo_exception", None)
+                feed_meta = getattr(feed, "feed", None)
+                title = getattr(feed_meta, "title", "") if feed_meta else ""
 
-            if title and "Feed error for query" in title:
-                raise Exception(f"Invalid ARXIV_QUERY: {query}.")
+                if title and "Feed error for query" in title:
+                    raise Exception(f"Invalid ARXIV_QUERY: {query}.")
 
-            # Validate HTTP status and parser state before accepting the feed
-            is_http_error = status is not None and status >= 400
-            is_parser_error = bool(bozo and not getattr(feed, "entries", None))
-            has_valid_feed = bool(feed_meta and title and not is_http_error and not is_parser_error)
+                # Validate HTTP status and parser state before accepting the feed.
+                is_http_error = status is not None and status >= 400
+                is_parser_error = bool(bozo and not getattr(feed, "entries", None))
+                has_valid_feed = bool(feed_meta and title and not is_http_error and not is_parser_error)
 
-            if has_valid_feed:
-                break
+                if has_valid_feed:
+                    break
 
-            error_msg = f"status={status}" if status is not None else f"bozo_exception={bozo_exc}"
-            if attempt < retry_num - 1:
-                logger.warning(
-                    f"Failed to fetch valid arxiv RSS feed ({error_msg}), retrying in {delay_time}s..."
+                error_msg = f"status={status}" if status is not None else f"bozo_exception={bozo_exc}"
+                if attempt < retry_num - 1:
+                    logger.warning(
+                        f"Failed to fetch valid arxiv RSS feed ({error_msg}), retrying in {delay_time}s..."
+                    )
+                    sleep(delay_time)
+            else:
+                status = getattr(feed, "status", None)
+                bozo_exc = getattr(feed, "bozo_exception", None)
+                raise RuntimeError(
+                    f"Failed to fetch valid arxiv RSS feed from {rss_url} after {retry_num} attempts "
+                    f"(status={status}, bozo_exception={bozo_exc})"
                 )
-                sleep(delay_time)
-        else:
-            status = getattr(feed, "status", None)
-            bozo_exc = getattr(feed, "bozo_exception", None)
-            raise RuntimeError(
-                f"Failed to fetch valid arxiv RSS feed from {rss_url} after {retry_num} attempts "
-                f"(status={status}, bozo_exception={bozo_exc})"
-            )
+
+            if feed.entries:
+                break
+            if empty_attempt < empty_retry_num - 1:
+                logger.warning(
+                    f"arXiv RSS feed is empty, retrying in {empty_delay_time}s..."
+                )
+                sleep(empty_delay_time)
+            else:
+                logger.warning(f"arXiv RSS feed is still empty after {empty_retry_num} attempts.")
 
         allowed_announce_types = {"new", "cross"} if include_cross_list else {"new"}
         target_entries = [
